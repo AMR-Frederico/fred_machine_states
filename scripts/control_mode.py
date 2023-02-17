@@ -48,7 +48,7 @@ if __name__ == '__main__':
     rospy.Subscriber("/machine_state/control_mode/switch", Bool, lambda msg: msg_callback(msg.data, switch_mode_dict))
 
     #topico que acompanha se o modo manual esta ativado
-    manual_mode_dict = {'value': False}   
+    manual_mode_dict = {'value': True}   
     manual_mode = manual_mode_dict['value']
 
     rospy.Subscriber("/machine_state/control_mode/manual", Bool, lambda msg: msg_callback(msg.data, manual_mode_dict))
@@ -65,6 +65,8 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
         switch_mode = switch_mode_dict['value']
+        auto_mode = auto_mode_dict['value']
+        manual_mode = manual_mode_dict['value']
 
         if(switch_mode > last_switch_mode):
                 #se mandar um comando positivo troca do modo atual para o outro 
@@ -84,6 +86,7 @@ if __name__ == '__main__':
 
         #Reseta 
         last_switch_mode = switch_mode
+        print(f"manual_mode: {manual_mode} | auto mode: {auto_mode} | switch_mode: {switch_mode}" )
         switch_mode_dict['value'] = False 
 
         rate.sleep()
