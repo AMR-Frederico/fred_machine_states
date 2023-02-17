@@ -209,3 +209,7 @@ include_directories(
 catkin_install_python(PROGRAMS scripts/control_switch.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+catkin_install_python(PROGRAMS scripts/goal_mode.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 
 # change between manual control and autonomos mode 
@@ -78,6 +77,20 @@ if __name__ == '__main__':
                         pub_auto_mode.publish(True)
                 
                 if(auto_mode and not manual_mode):
+
+                        #desliga mannual mode
+                        pub_auto_mode.publish(False)
+                        #liga manual mode
+                        pub_manual_mode.publish(True)
+
+                if(auto_mode and  manual_mode):
+
+                        #desliga mannual mode
+                        pub_auto_mode.publish(False)
+                        #liga manual mode
+                        pub_manual_mode.publish(True)
+
+                if( not auto_mode and  not manual_mode):
 
                         #desliga mannual mode
                         pub_auto_mode.publish(False)
