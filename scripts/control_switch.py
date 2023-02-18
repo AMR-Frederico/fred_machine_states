@@ -83,19 +83,19 @@ if __name__ == '__main__':
                         #liga manual mode
                         pub_manual_mode.publish(True)
 
-                if(auto_mode and  manual_mode):
+                # if(auto_mode and  manual_mode):
 
-                        #desliga mannual mode
-                        pub_auto_mode.publish(False)
-                        #liga manual mode
-                        pub_manual_mode.publish(True)
+                #         #desliga mannual mode
+                #         pub_auto_mode.publish(False)
+                #         #liga manual mode
+                #         pub_manual_mode.publish(True)
 
-                if( not auto_mode and  not manual_mode):
+                # if( not auto_mode and  not manual_mode):
 
-                        #desliga mannual mode
-                        pub_auto_mode.publish(False)
-                        #liga manual mode
-                        pub_manual_mode.publish(True)
+                #         #desliga mannual mode
+                #         pub_auto_mode.publish(False)
+                #         #liga manual mode
+                #         pub_manual_mode.publish(True)
 
         #Reseta 
         last_switch_mode = switch_mode

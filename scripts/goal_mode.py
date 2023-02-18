@@ -6,6 +6,7 @@ from std_msgs.msg import Int16,Float32,Float64,Int32,Bool
 from nav_msgs.msg import Odometry
 
 from enum import Enum, IntEnum
+
 #machine states for moving the robot 
 
 
@@ -17,16 +18,28 @@ from enum import Enum, IntEnum
 # ---- stop 
 
 current_position = None
+current_speed = None
 goal_pid = None
-
+dist_tolerance = 0.2 #[m]
 class Fred_state(IntEnum):
 
-    IDLE = 0
-    WAITING = 100
-    WITH_GOAL = 110
-    MOVING_TO_GOAL = 120
-    AT_GOAL = 130 # added by Ale
-    STOPING = 200
+    IDLE =  2 #red
+    WAITING = 1 #blue
+    WITH_GOAL = 5 #yellow
+    MOVING_TO_GOAL = 4 #rosa
+    AT_GOAL =  3 #green
+    STOPING = 6 #orange
+
+
+def reached_goal(current_position, goal_pid):
+    distance_to_target = goal_pid - current_position
+    
+    
+    return abs(distance_to_target)> dist_tolerance
+        
+
+def fred_moving(current_speed):
+    return current_speed != 0 
     
 
 def position_callback(position_msg):
@@ -35,6 +48,9 @@ def position_callback(position_msg):
 
 def odom_callback(odom_msg):
     global current_position
+    global current_speed
+
+    current_speed = odom_msg.twist.twist.linear.x
     current_position = odom_msg.pose.pose.position.x
 
 def msg_callback(value, dict):
@@ -84,14 +100,18 @@ if __name__ == '__main__':
         # INPUTS 
 
         auto_mode = auto_mode_dict['value']
-        control_conected = control_conection_dict['value'] 
-        moving = True 
-        reached_goal = True
+        # control_conected = control_conection_dict['value'] 
+        control_conected = True
+
+        moving = fred_moving(current_speed)
+        reached_goal_flag = reached_goal(current_position,goal_pid)
 
         rospy.Subscriber("/odom", Odometry, odom_callback)
         rospy.Subscriber("/control/position/x", Float64, position_callback)
 
-        print(f"state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| current pos: {current_position}| goal pid : {goal_pid}")
+        pub_fita_led = rospy.Publisher("/cmd/led_strip/color",Float32,queue_size = 5)
+
+        print(f"state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| current pos: {current_position}| goal pid : {goal_pid}|reached_goal_flag {reached_goal_flag }|moving {moving}  ")
         
         if( not auto_mode or not control_conected):
             state = Fred_state.IDLE
@@ -104,13 +124,16 @@ if __name__ == '__main__':
             if(goal_pid != None): #tem comando 
                 state = Fred_state.WITH_GOAL
 
-                if(moving and not reached_goal): # se esta se movendo e ainda não chegou no objetivo
+                if(moving and not reached_goal_flag): # se esta se movendo e ainda não chegou no objetivo
                     state = Fred_state.MOVING_TO_GOAL
 
-                if(reached_goal and not moving): #chegou no objetivo e não esta se movendo 
+                if(reached_goal_flag and not moving): #chegou no objetivo e não esta se movendo 
                     state = Fred_state.AT_GOAL
 
             
+
+        pub_fita_led.publish(state)
+
 
 
         rate.sleep()

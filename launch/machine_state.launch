@@ -1,0 +1,11 @@
+<launch>
+
+    <node name="switch_control_mode" 
+        pkg="fred_machine_states" 
+        type="control_switch.py"
+        output="screen"
+        >
+        
+    </node>
+          
+</launch>
