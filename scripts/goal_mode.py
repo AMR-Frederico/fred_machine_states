@@ -6,6 +6,7 @@ from std_msgs.msg import Int16,Float32,Float64,Int32,Bool
 from nav_msgs.msg import Odometry
 
 from enum import Enum, IntEnum
+from time import time 
 
 #machine states for moving the robot 
 
@@ -17,29 +18,57 @@ from enum import Enum, IntEnum
 #state 03 -> achieved goal  ->  led green 
 # ---- stop 
 
-current_position = None
-current_speed = None
+current_position = 0
+current_speed = 0
 goal_pid = None
-dist_tolerance = 0.2 #[m]
+reached_goal_flag = False
+
+DIST_TOLERANCE = 0.2 #[m]
+SPEED_TOLERANCE = 0.1 #[m/s]
+IN_GOAL_MAX_TIME = 2 #[s]
+
 class Fred_state(IntEnum):
 
     IDLE =  2 #red
     WAITING = 1 #blue
     WITH_GOAL = 5 #yellow
-    MOVING_TO_GOAL = 4 #rosa
+    MOVING_TO_GOAL = 4 #pink
     AT_GOAL =  3 #green
     STOPING = 6 #orange
 
 
 def reached_goal(current_position, goal_pid):
+    global reached_goal_flag 
+    #if goal_pid = None -> not defined goal yet 
+    if(goal_pid==None):
+        return False
+
     distance_to_target = goal_pid - current_position
+
+    # se a distancia pro objetivo for menor que o objetivo -> esta no objetivo
+    in_goal = abs(distance_to_target) < DIST_TOLERANCE
+
+    # se tiver no objetivo e a flag for falsa -> primeira vez no objetivo guarda o tempo
+    if(in_goal and not reached_goal_flag):
+        print("-------------------------start cont")
+        reached_goal_time = time()
+        reached_goal_flag = True
     
-    
-    return abs(distance_to_target)> dist_tolerance
+    # se nao estiver no objetivo garante q a flag esteja falsa, tbm vale caso ele saia do objetivo
+    if(not in_goal):
+        reached_goal_flag = False
+        reached_goal_time = time()
+
+    #calcula o tempo que ele ficou no objetivo 
+    in_target_time = time() - reached_goal_time
+ 
+    # se ele ficou no objetivo pelo tempo necessario retorna verdadeiro
+    print(f"current_position:{current_position}|goal_pid:{goal_pid}|  reached tgt:{in_target_time > IN_GOAL_MAX_TIME} |in_goal:{in_goal}| reached_goal_flag:{reached_goal_flag}|reached_goal_time:{reached_goal_time}|in_target_time:{in_target_time}")
+    return in_target_time > IN_GOAL_MAX_TIME
         
 
 def fred_moving(current_speed):
-    return current_speed != 0 
+    return abs(current_speed) > SPEED_TOLERANCE
     
 
 def position_callback(position_msg):
@@ -111,7 +140,7 @@ if __name__ == '__main__':
 
         pub_fita_led = rospy.Publisher("/cmd/led_strip/color",Float32,queue_size = 5)
 
-        print(f"state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| current pos: {current_position}| goal pid : {goal_pid}|reached_goal_flag {reached_goal_flag }|moving {moving}  ")
+        # print(f"state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| current pos: {current_position}| goal pid : {goal_pid}|reached_goal_flag {reached_goal_flag }|moving {moving}  ")
         
         if( not auto_mode or not control_conected):
             state = Fred_state.IDLE
