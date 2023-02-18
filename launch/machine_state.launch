@@ -1,8 +1,16 @@
 <launch>
 
-    <node name="switch_control_mode" 
+    <node name="switch_control_node" 
         pkg="fred_machine_states" 
         type="control_switch.py"
+        output="screen"
+        >
+        
+    </node>
+
+    <node name="machine_state_node" 
+        pkg="fred_machine_states" 
+        type="goal_mode.py"
         output="screen"
         >
         

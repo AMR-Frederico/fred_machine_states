@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
         #Reseta 
         last_switch_mode = switch_mode
-        print(f"manual_mode: {manual_mode} | auto mode: {auto_mode} | switch_mode: {switch_mode}" )
+        # print(f"manual_mode: {manual_mode} | auto mode: {auto_mode} | switch_mode: {switch_mode}" )
         switch_mode_dict['value'] = False 
 
         rate.sleep()

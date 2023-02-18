@@ -21,11 +21,15 @@ from time import time
 current_position = 0
 current_speed = 0
 goal_pid = None
+last_goal_pid = None
 reached_goal_flag = False
+last_in_goal = False
+emergency = False
 
 DIST_TOLERANCE = 0.2 #[m]
 SPEED_TOLERANCE = 0.1 #[m/s]
-IN_GOAL_MAX_TIME = 2 #[s]
+IN_GOAL_TIME = 2 #[s]
+IN_GOAL_MAX_TIME = 10 #[s]
 
 class Fred_state(IntEnum):
 
@@ -39,32 +43,35 @@ class Fred_state(IntEnum):
 
 def reached_goal(current_position, goal_pid):
     global reached_goal_flag 
-    #if goal_pid = None -> not defined goal yet 
+    global reached_goal_time
+    global last_in_goal
+   
     if(goal_pid==None):
         return False
-
+    current_time = time()
     distance_to_target = goal_pid - current_position
 
     # se a distancia pro objetivo for menor que o objetivo -> esta no objetivo
     in_goal = abs(distance_to_target) < DIST_TOLERANCE
 
     # se tiver no objetivo e a flag for falsa -> primeira vez no objetivo guarda o tempo
-    if(in_goal and not reached_goal_flag):
-        print("-------------------------start cont")
-        reached_goal_time = time()
-        reached_goal_flag = True
+    #rising edge
+    if(in_goal > last_in_goal):
+        reached_goal_time = current_time
+        
     
     # se nao estiver no objetivo garante q a flag esteja falsa, tbm vale caso ele saia do objetivo
     if(not in_goal):
-        reached_goal_flag = False
-        reached_goal_time = time()
+        reached_goal_time = current_time
 
     #calcula o tempo que ele ficou no objetivo 
-    in_target_time = time() - reached_goal_time
- 
+    in_target_time = current_time - reached_goal_time
+   
+    last_in_goal = in_goal
     # se ele ficou no objetivo pelo tempo necessario retorna verdadeiro
-    print(f"current_position:{current_position}|goal_pid:{goal_pid}|  reached tgt:{in_target_time > IN_GOAL_MAX_TIME} |in_goal:{in_goal}| reached_goal_flag:{reached_goal_flag}|reached_goal_time:{reached_goal_time}|in_target_time:{in_target_time}")
-    return in_target_time > IN_GOAL_MAX_TIME
+
+    # print(f"current_position:{current_position}|goal_pid:{goal_pid}|  reached tgt:{in_target_time > IN_GOAL_MAX_TIME} |in_goal:{in_goal}| reached_goal_flag:{reached_goal_flag}|reached_goal_time:{reached_goal_time}|in_target_time:{in_target_time}")
+    return in_target_time > IN_GOAL_TIME #and in_target_time < IN_GOAL_MAX_TIME
         
 
 def fred_moving(current_speed):
@@ -129,8 +136,8 @@ if __name__ == '__main__':
         # INPUTS 
 
         auto_mode = auto_mode_dict['value']
-        # control_conected = control_conection_dict['value'] 
-        control_conected = True
+        control_conected = control_conection_dict['value'] 
+        # control_conected = True
 
         moving = fred_moving(current_speed)
         reached_goal_flag = reached_goal(current_position,goal_pid)
@@ -139,7 +146,9 @@ if __name__ == '__main__':
         rospy.Subscriber("/control/position/x", Float64, position_callback)
 
         pub_fita_led = rospy.Publisher("/cmd/led_strip/color",Float32,queue_size = 5)
-
+        pub_turn_on_pid = rospy.Publisher("/control/on",Bool, queue_size = 1)
+        
+       
         # print(f"state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| current pos: {current_position}| goal pid : {goal_pid}|reached_goal_flag {reached_goal_flag }|moving {moving}  ")
         
         if( not auto_mode or not control_conected):
@@ -147,7 +156,7 @@ if __name__ == '__main__':
 
         if(auto_mode and control_conected):
 
-            if(goal_pid == None): #se ele não tem comando e não esta se movendo 
+            if(goal_pid == None and not moving): #se ele não tem comando e não esta se movendo 
                 state = Fred_state.WAITING
 
             if(goal_pid != None): #tem comando 
@@ -159,10 +168,33 @@ if __name__ == '__main__':
                 if(reached_goal_flag and not moving): #chegou no objetivo e não esta se movendo 
                     state = Fred_state.AT_GOAL
 
+            # if(reached_goal_flag and not moving):
+            #         state = Fred_state.STOPING
+                    
+
+        last_goal_pid = goal_pid  
+        #-------------------------------act on state 
+        if(state == Fred_state.AT_GOAL):
+           goal_pid = None
+           pub_turn_on_pid.publish(False)
+
+        
+        if(state == Fred_state.WITH_GOAL):
+            pub_turn_on_pid.publish(True)
+        
+        if(state == Fred_state.IDLE):
+            pub_turn_on_pid.publish(False)
+
+        if( not control_conected):
+            pub_turn_on_pid.publish(False)
+            emergency = not emergency
+            if(emergency):
+                state = 200
             
 
         pub_fita_led.publish(state)
-
+       
+            
 
 
         rate.sleep()
