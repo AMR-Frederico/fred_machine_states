@@ -11,9 +11,9 @@ from time import time
 #machine states for moving the robot 
 
 
-#state 01 - > idle  -> stoped motors led yellow 
-# ----start moving  
-#state 02 -> with goal -> actived PID led blue 
+#state 01 - > idle  -> stoped motors white
+# ----waiting blue 
+#state 02 -> with goal -> actived PID yellow
 # --- moving---- 
 #state 03 -> achieved goal  ->  led green 
 # ---- stop 
@@ -32,13 +32,15 @@ IN_GOAL_TIME = 2 #[s]
 IN_GOAL_MAX_TIME = 10 #[s]
 
 class Fred_state(IntEnum):
-
-    IDLE =  2 #red
+            
+    IDLE = 0#white 
     WAITING = 1 #blue
     WITH_GOAL = 5 #yellow
     MOVING_TO_GOAL = 4 #pink
     AT_GOAL =  3 #green
     STOPING = 6 #orange
+    EMERGENCY_BREAK = 2 #red
+
 
 
 def reached_goal(current_position, goal_pid):
@@ -128,6 +130,12 @@ if __name__ == '__main__':
     control_conection = control_conection_dict['value']
 
     rospy.Subscriber("joy/controler/connected", Bool, lambda msg: msg_callback(msg.data, control_conection_dict))
+
+    abort_dict = {'value': False}   
+    abort = abort_dict['value']
+
+    rospy.Subscriber("/safety/emergency/stop", Bool, lambda msg: msg_callback(msg.data, abort_dict))
+
     #PUBS    
    
    # pub_auto_mode = rospy.Publisher('/machine_state/control_mode/auto', Bool, queue_size=1)
@@ -137,8 +145,8 @@ if __name__ == '__main__':
 
         auto_mode = auto_mode_dict['value']
         control_conected = control_conection_dict['value'] 
-        # control_conected = True
-
+        abort = abort_dict['value']
+        safe = not abort
         moving = fred_moving(current_speed)
         reached_goal_flag = reached_goal(current_position,goal_pid)
 
@@ -170,9 +178,12 @@ if __name__ == '__main__':
 
             # if(reached_goal_flag and not moving):
             #         state = Fred_state.STOPING
+        if(abort):
+            state = Fred_state.EMERGENCY_BREAK
                     
 
         last_goal_pid = goal_pid  
+
         #-------------------------------act on state 
         if(state == Fred_state.AT_GOAL):
            goal_pid = None
@@ -185,7 +196,10 @@ if __name__ == '__main__':
         if(state == Fred_state.IDLE):
             pub_turn_on_pid.publish(False)
 
-        if( not control_conected):
+        # if(state == Fred_state.EMERGENCY_BREAK):
+        #     pub_turn_on_pid.publish(False)
+
+        if( not control_conected or abort):
             pub_turn_on_pid.publish(False)
             emergency = not emergency
             if(emergency):

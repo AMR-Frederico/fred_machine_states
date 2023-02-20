@@ -13,8 +13,19 @@ import rospy
 from std_msgs.msg import Int16
 from std_msgs.msg import Bool
 from std_msgs.msg import Int32
+# from geometry_msgs.msg import Twist
+
+# cmd_vel_manual = Twist()
+# cmd_vel_auto = Twist()
 
 
+# def call_back_auto_controler(msg):
+#     global cmd_vel_auto
+#     cmd_vel_auto = msg 
+
+# def call_back__manual_controler(msg):
+#     global cmd_vel_manual
+#     cmd_vel_manual = msg
 
 def msg_callback(value, dict):
 
@@ -58,9 +69,15 @@ if __name__ == '__main__':
 
     rospy.Subscriber("/machine_state/control_mode/auto", Bool, lambda msg: msg_callback(msg.data, auto_mode_dict))
 
+
+    # rospy.Subscriber("cmd_vel/auto_controler",Twist, call_back_auto_controler)
+    # rospy.Subscriber("cmd_vel/manual_controler",Twist, call_back__manual_controler)
+
     #PUBS 
     pub_manual_mode = rospy.Publisher('/machine_state/control_mode/manual', Bool, queue_size=1)
     pub_auto_mode = rospy.Publisher('/machine_state/control_mode/auto', Bool, queue_size=1)
+    # pub_cmd_vel = rospy.Publisher("cmd_vel", Twist , queue_size=10)
+
 
     while not rospy.is_shutdown():
         switch_mode = switch_mode_dict['value']
@@ -75,6 +92,8 @@ if __name__ == '__main__':
                         pub_manual_mode.publish(False)
                         # liga auto mode
                         pub_auto_mode.publish(True)
+                        # pub_cmd_vel.publish(cmd_vel_auto)
+
                 
                 if(auto_mode and not manual_mode):
 
@@ -82,6 +101,7 @@ if __name__ == '__main__':
                         pub_auto_mode.publish(False)
                         #liga manual mode
                         pub_manual_mode.publish(True)
+                        # pub_cmd_vel.publish(cmd_vel_manual)
 
                 # if(auto_mode and  manual_mode):
 
