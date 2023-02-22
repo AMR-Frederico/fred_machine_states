@@ -4,6 +4,7 @@
 import rospy
 from std_msgs.msg import Int16,Float32,Float64,Int32,Bool
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Twist
 
 from enum import Enum, IntEnum
 from time import time 
@@ -26,10 +27,13 @@ reached_goal_flag = False
 last_in_goal = False
 emergency = False
 
-DIST_TOLERANCE = 0.2 #[m]
-SPEED_TOLERANCE = 0.1 #[m/s]
-IN_GOAL_TIME = 2 #[s]
+DIST_TOLERANCE = 0.3 #[m]
+SPEED_TOLERANCE = 0.05 #[m/s]
+IN_GOAL_TIME = 1 #[s]
 IN_GOAL_MAX_TIME = 10 #[s]
+
+cmd_vel_msg = Twist()
+
 
 class Fred_state(IntEnum):
             
@@ -136,9 +140,12 @@ if __name__ == '__main__':
 
     rospy.Subscriber("/safety/emergency/stop", Bool, lambda msg: msg_callback(msg.data, abort_dict))
 
+
     #PUBS    
    
    # pub_auto_mode = rospy.Publisher('/machine_state/control_mode/auto', Bool, queue_size=1)
+    pub_goal_reached = rospy.Publisher("control/position/goal/reached",Bool, queue_size = 1)
+    pub_cmd_vel = rospy.Publisher("cmd_vel",Twist,queue_size = 10)
 
     while not rospy.is_shutdown():
         # INPUTS 
@@ -173,7 +180,7 @@ if __name__ == '__main__':
                 if(moving and not reached_goal_flag): # se esta se movendo e ainda não chegou no objetivo
                     state = Fred_state.MOVING_TO_GOAL
 
-                if(reached_goal_flag and not moving): #chegou no objetivo e não esta se movendo 
+                if(reached_goal_flag ): #chegou no objetivo e não esta se movendo 
                     state = Fred_state.AT_GOAL
 
             # if(reached_goal_flag and not moving):
@@ -196,8 +203,11 @@ if __name__ == '__main__':
         if(state == Fred_state.IDLE):
             pub_turn_on_pid.publish(False)
 
-        # if(state == Fred_state.EMERGENCY_BREAK):
-        #     pub_turn_on_pid.publish(False)
+        if(state == Fred_state.EMERGENCY_BREAK):
+            pub_turn_on_pid.publish(False)
+            cmd_vel_msg.linear.x = 0
+            cmd_vel_msg.angular.z = 0
+            pub_cmd_vel.publish(cmd_vel_msg)
 
         if( not control_conected or abort):
             pub_turn_on_pid.publish(False)
@@ -206,6 +216,7 @@ if __name__ == '__main__':
                 state = 200
             
 
+        pub_goal_reached.publish(reached_goal_flag)
         pub_fita_led.publish(state)
        
             
