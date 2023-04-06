@@ -4,7 +4,7 @@
 import rospy
 from std_msgs.msg import Int16,Float32,Float64,Int32,Bool
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist,Pose2D
 
 from enum import Enum, IntEnum
 from time import time 
@@ -19,9 +19,11 @@ from time import time
 #state 03 -> achieved goal  ->  led green 
 # ---- stop 
 
-current_position = 0
+current_position_x = 0
+current_position_y = 0
 current_speed = 0
-goal_pid = None
+goal_pid_x = None
+goal_pid_y = None
 last_goal_pid = None
 reached_goal_flag = False
 last_in_goal = False
@@ -29,11 +31,12 @@ emergency = False
 
 DIST_TOLERANCE = 0.3 #[m]
 SPEED_TOLERANCE = 0.05 #[m/s]
-IN_GOAL_TIME = 1 #[s]
+IN_GOAL_TIME = 0 #[s]
 IN_GOAL_MAX_TIME = 10 #[s]
 
 cmd_vel_msg = Twist()
 
+# real_goal = 12.4
 
 class Fred_state(IntEnum):
             
@@ -44,21 +47,27 @@ class Fred_state(IntEnum):
     AT_GOAL =  3 #green
     STOPING = 6 #orange
     EMERGENCY_BREAK = 2 #red
+    
 
 
 
-def reached_goal(current_position, goal_pid):
+
+def reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y):
     global reached_goal_flag 
     global reached_goal_time
     global last_in_goal
    
-    if(goal_pid==None):
+    if(goal_pid_x == None or goal_pid_y == None):
         return False
     current_time = time()
-    distance_to_target = goal_pid - current_position
+    distance_to_target_x = goal_pid_x - current_position_x
+    distance_to_target_y = goal_pid_y - current_position_y
 
     # se a distancia pro objetivo for menor que o objetivo -> esta no objetivo
-    in_goal = abs(distance_to_target) < DIST_TOLERANCE
+    in_goal_x = abs(distance_to_target_x) < DIST_TOLERANCE
+    in_goal_y = abs(distance_to_target_y) < DIST_TOLERANCE
+    
+    in_goal = in_goal_x and in_goal_y
 
     # se tiver no objetivo e a flag for falsa -> primeira vez no objetivo guarda o tempo
     #rising edge
@@ -85,15 +94,21 @@ def fred_moving(current_speed):
     
 
 def position_callback(position_msg):
-    global goal_pid
-    goal_pid = position_msg.data
+    global goal_pid_x
+    global goal_pid_y
+
+    goal_pid_x = position_msg.x
+    goal_pid_y = position_msg.y
+
 
 def odom_callback(odom_msg):
-    global current_position
+    global current_position_x
+    global current_position_y
     global current_speed
 
     current_speed = odom_msg.twist.twist.linear.x
-    current_position = odom_msg.pose.pose.position.x
+    current_position_x = odom_msg.pose.pose.position.x
+    current_position_y = odom_msg.pose.pose.position.y
 
 def msg_callback(value, dict):
 
@@ -155,10 +170,11 @@ if __name__ == '__main__':
         abort = abort_dict['value']
         safe = not abort
         moving = fred_moving(current_speed)
-        reached_goal_flag = reached_goal(current_position,goal_pid)
+        reached_goal_flag = reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y)
 
         rospy.Subscriber("/odom", Odometry, odom_callback)
-        rospy.Subscriber("/control/position/x", Float64, position_callback)
+        # rospy.Subscriber("/control/position/x", Float64, position_callback)
+        rospy.Subscriber("/control/position/setup/goal", Pose2D, position_callback)
 
         pub_fita_led = rospy.Publisher("/cmd/led_strip/color",Float32,queue_size = 5)
         pub_turn_on_pid = rospy.Publisher("/control/on",Bool, queue_size = 1)
@@ -171,10 +187,10 @@ if __name__ == '__main__':
 
         if(auto_mode and control_conected):
 
-            if(goal_pid == None and not moving): #se ele não tem comando e não esta se movendo 
+            if(goal_pid_x == None and not moving): #se ele não tem comando e não esta se movendo 
                 state = Fred_state.WAITING
 
-            if(goal_pid != None): #tem comando 
+            if(goal_pid_x != None): #tem comando 
                 state = Fred_state.WITH_GOAL
 
                 if(moving and not reached_goal_flag): # se esta se movendo e ainda não chegou no objetivo
@@ -189,11 +205,12 @@ if __name__ == '__main__':
             state = Fred_state.EMERGENCY_BREAK
                     
 
-        last_goal_pid = goal_pid  
+        last_goal_pid_x = goal_pid_x 
+        last_goal_pid_y = goal_pid_y  
 
         #-------------------------------act on state 
         if(state == Fred_state.AT_GOAL):
-           goal_pid = None
+           goal_pid_x = None
            pub_turn_on_pid.publish(False)
 
         
