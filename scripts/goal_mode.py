@@ -4,7 +4,7 @@
 import rospy
 from std_msgs.msg import Int16,Float32,Float64,Int32,Bool
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist,Pose2D
+from geometry_msgs.msg import Twist,PoseStamped
 
 from enum import Enum, IntEnum
 from time import time 
@@ -56,12 +56,18 @@ def reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y):
     global reached_goal_flag 
     global reached_goal_time
     global last_in_goal
-   
-    if(goal_pid_x == None or goal_pid_y == None):
+    print(f"{goal_pid_x}  {goal_pid_y}")
+
+    if(goal_pid_x == None and  goal_pid_y == None):
         return False
+    if(goal_pid_x == None):
+        goal_pid_x = 0
+    if(goal_pid_y == None):
+        goal_pid_y = 0
     current_time = time()
     distance_to_target_x = goal_pid_x - current_position_x
     distance_to_target_y = goal_pid_y - current_position_y
+    print(distance_to_target_x)
 
     # se a distancia pro objetivo for menor que o objetivo -> esta no objetivo
     in_goal_x = abs(distance_to_target_x) < DIST_TOLERANCE
@@ -93,12 +99,11 @@ def fred_moving(current_speed):
     return abs(current_speed) > SPEED_TOLERANCE
     
 
-def position_callback(position_msg):
+def position_callback(pose_msg):
     global goal_pid_x
     global goal_pid_y
-
-    goal_pid_x = position_msg.x
-    goal_pid_y = position_msg.y
+    goal_pid_x =  float(pose_msg.pose.position.x)
+    goal_pid_y = float( pose_msg.pose.position.y )
 
 
 def odom_callback(odom_msg):
@@ -129,7 +134,7 @@ def msg_callback(value, dict):
 
 
 if __name__ == '__main__':
-    rospy.init_node('goal_manager_node')
+    rospy.init_node('machine_state_node')
     rate = rospy.Rate(10)
 
     state = Fred_state.IDLE
@@ -159,7 +164,7 @@ if __name__ == '__main__':
     #PUBS    
    
    # pub_auto_mode = rospy.Publisher('/machine_state/control_mode/auto', Bool, queue_size=1)
-    pub_goal_reached = rospy.Publisher("control/position/goal/reached",Bool, queue_size = 1)
+    pub_goal_reached = rospy.Publisher("goal_manager/goal/reached",Bool, queue_size = 1)
     pub_cmd_vel = rospy.Publisher("cmd_vel",Twist,queue_size = 10)
 
     while not rospy.is_shutdown():
@@ -170,11 +175,14 @@ if __name__ == '__main__':
         abort = abort_dict['value']
         safe = not abort
         moving = fred_moving(current_speed)
+        
         reached_goal_flag = reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y)
 
         rospy.Subscriber("/odom", Odometry, odom_callback)
         # rospy.Subscriber("/control/position/x", Float64, position_callback)
-        rospy.Subscriber("/control/position/setup/goal", Pose2D, position_callback)
+        # rospy.Subscriber("/control/position/setup/goal", Pose2D, position_callback)
+        rospy.Subscriber("/goal_manager/goal/current", PoseStamped, position_callback)
+
 
         pub_fita_led = rospy.Publisher("/cmd/led_strip/color",Float32,queue_size = 5)
         pub_turn_on_pid = rospy.Publisher("/control/on",Bool, queue_size = 1)
@@ -232,7 +240,7 @@ if __name__ == '__main__':
             if(emergency):
                 state = 200
             
-
+        print(reached_goal_flag)
         pub_goal_reached.publish(reached_goal_flag)
         pub_fita_led.publish(state)
        
