@@ -22,12 +22,17 @@ from time import time
 current_position_x = 0
 current_position_y = 0
 current_speed = 0
+
 goal_pid_x = None
 goal_pid_y = None
+goal_pid = None
+
 last_goal_pid = None
 reached_goal_flag = False
 last_in_goal = False
 emergency = False
+
+mission_completed_flag = False
 
 DIST_TOLERANCE = 0.3 #[m]
 SPEED_TOLERANCE = 0.05 #[m/s]
@@ -45,7 +50,7 @@ class Fred_state(IntEnum):
     WITH_GOAL = 5 #yellow
     MOVING_TO_GOAL = 4 #pink
     AT_GOAL =  3 #green
-    STOPING = 6 #orange
+    MISSION_COMPLETED = 6 #orange
     EMERGENCY_BREAK = 2 #red
     
 
@@ -56,7 +61,7 @@ def reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y):
     global reached_goal_flag 
     global reached_goal_time
     global last_in_goal
-    print(f"{goal_pid_x}  {goal_pid_y}")
+    # print(f"{goal_pid_x}  {goal_pid_y}")
 
     if(goal_pid_x == None and  goal_pid_y == None):
         return False
@@ -67,7 +72,7 @@ def reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y):
     current_time = time()
     distance_to_target_x = goal_pid_x - current_position_x
     distance_to_target_y = goal_pid_y - current_position_y
-    print(distance_to_target_x)
+    # print(distance_to_target_x)
 
     # se a distancia pro objetivo for menor que o objetivo -> esta no objetivo
     in_goal_x = abs(distance_to_target_x) < DIST_TOLERANCE
@@ -104,6 +109,7 @@ def position_callback(pose_msg):
     global goal_pid_y
     goal_pid_x =  float(pose_msg.pose.position.x)
     goal_pid_y = float( pose_msg.pose.position.y )
+  
 
 
 def odom_callback(odom_msg):
@@ -146,6 +152,7 @@ if __name__ == '__main__':
     #topico que acompanha se o modo autonomo esta ativado
     auto_mode_dict = {'value': False}   
     auto_mode = auto_mode_dict['value']
+    
 
     rospy.Subscriber("/machine_state/control_mode/auto", Bool, lambda msg: msg_callback(msg.data, auto_mode_dict))
 
@@ -160,6 +167,11 @@ if __name__ == '__main__':
 
     rospy.Subscriber("/safety/emergency/stop", Bool, lambda msg: msg_callback(msg.data, abort_dict))
 
+    mission_completed_dict = {'value': False}   
+    mission_completed = mission_completed_dict['value']
+
+    rospy.Subscriber("/goal_manager/goal/mission_completed", Bool, lambda msg: msg_callback(msg.data, mission_completed_dict))
+
 
     #PUBS    
    
@@ -171,10 +183,14 @@ if __name__ == '__main__':
         # INPUTS 
 
         auto_mode = auto_mode_dict['value']
+        manual_mode = not auto_mode
         control_conected = control_conection_dict['value'] 
+        control_desconected = not control_conected
         abort = abort_dict['value']
         safe = not abort
         moving = fred_moving(current_speed)
+        stoped = not moving
+        mission_completed = mission_completed_dict['value']
         
         reached_goal_flag = reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y)
 
@@ -190,12 +206,12 @@ if __name__ == '__main__':
        
         # print(f"state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| current pos: {current_position}| goal pid : {goal_pid}|reached_goal_flag {reached_goal_flag }|moving {moving}  ")
         
-        if( not auto_mode or not control_conected):
+        if( manual_mode or control_desconected):
             state = Fred_state.IDLE
 
         if(auto_mode and control_conected):
 
-            if(goal_pid_x == None and not moving): #se ele não tem comando e não esta se movendo 
+            if(goal_pid_x == None and stoped): #se ele não tem comando e não esta se movendo 
                 state = Fred_state.WAITING
 
             if(goal_pid_x != None): #tem comando 
@@ -206,6 +222,9 @@ if __name__ == '__main__':
 
                 if(reached_goal_flag ): #chegou no objetivo e não esta se movendo 
                     state = Fred_state.AT_GOAL
+
+                if(mission_completed): #completou todos os objetivos 
+                    state = Fred_state.MISSION_COMPLETED
 
             # if(reached_goal_flag and not moving):
             #         state = Fred_state.STOPING
@@ -228,19 +247,31 @@ if __name__ == '__main__':
         if(state == Fred_state.IDLE):
             pub_turn_on_pid.publish(False)
 
+
+        if(state == Fred_state.MISSION_COMPLETED):
+            pub_turn_on_pid.publish(False)
+            cmd_vel_msg.linear.x = 0
+            cmd_vel_msg.angular.z = 0
+            pub_cmd_vel.publish(cmd_vel_msg)
+            mission_completed_flag = not mission_completed_flag
+            if(mission_completed_flag):
+                state = 300
+
+
         if(state == Fred_state.EMERGENCY_BREAK):
             pub_turn_on_pid.publish(False)
             cmd_vel_msg.linear.x = 0
             cmd_vel_msg.angular.z = 0
             pub_cmd_vel.publish(cmd_vel_msg)
+            
 
-        if( not control_conected or abort):
+        if(control_desconected or abort):
             pub_turn_on_pid.publish(False)
             emergency = not emergency
             if(emergency):
                 state = 200
             
-        print(reached_goal_flag)
+
         pub_goal_reached.publish(reached_goal_flag)
         pub_fita_led.publish(state)
        
