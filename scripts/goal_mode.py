@@ -34,7 +34,7 @@ emergency = False
 
 mission_completed_flag = False
 
-DIST_TOLERANCE = 0.3 #[m]
+DIST_TOLERANCE = 0.5 #[m]
 SPEED_TOLERANCE = 0.05 #[m/s]
 IN_GOAL_TIME = 0 #[s]
 IN_GOAL_MAX_TIME = 10 #[s]
