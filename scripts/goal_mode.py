@@ -34,7 +34,7 @@ emergency = False
 
 mission_completed_flag = False
 
-DIST_TOLERANCE = 0.5 #[m]
+DIST_TOLERANCE = 2 #[m]
 SPEED_TOLERANCE = 0.05 #[m/s]
 IN_GOAL_TIME = 0 #[s]
 IN_GOAL_MAX_TIME = 10 #[s]
@@ -47,8 +47,8 @@ class Fred_state(IntEnum):
             
     IDLE = 0#white 
     WAITING = 1 #blue
-    WITH_GOAL = 5 #yellow
-    MOVING_TO_GOAL = 4 #pink
+    WITH_GOAL = 50 #yellow
+    MOVING_TO_GOAL = 40 #pink
     AT_GOAL =  3 #green
     MISSION_COMPLETED = 6 #orange
     EMERGENCY_BREAK = 2 #red
