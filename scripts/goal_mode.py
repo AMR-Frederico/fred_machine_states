@@ -34,7 +34,7 @@ emergency = False
 
 mission_completed_flag = False
 
-DIST_TOLERANCE = 2 #[m]
+DIST_TOLERANCE = 0.3 #[m]
 SPEED_TOLERANCE = 0.05 #[m/s]
 IN_GOAL_TIME = 0 #[s]
 IN_GOAL_MAX_TIME = 10 #[s]
@@ -272,6 +272,7 @@ if __name__ == '__main__':
                 state = 200
             
 
+        mission_completed = False
         pub_goal_reached.publish(reached_goal_flag)
         pub_fita_led.publish(state)
        
