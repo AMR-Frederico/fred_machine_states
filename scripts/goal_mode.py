@@ -23,9 +23,13 @@ current_position_x = 0
 current_position_y = 0
 current_speed = 0
 
+THETHA_ZERO =  -19.738812660780226 #impiric value from test when theta is set at 0 on goal_setter.py 
 goal_pid_x = None
 goal_pid_y = None
 goal_pid = None
+ghost_goal = None
+
+ghost_goal_flag = False 
 
 last_goal_pid = None
 reached_goal_flag = False
@@ -34,7 +38,7 @@ emergency = False
 
 mission_completed_flag = False
 
-DIST_TOLERANCE = 2 #[m]
+DIST_TOLERANCE = 0.35 #[m]
 SPEED_TOLERANCE = 0.05 #[m/s]
 IN_GOAL_TIME = 0 #[s]
 IN_GOAL_MAX_TIME = 10 #[s]
@@ -107,8 +111,10 @@ def fred_moving(current_speed):
 def position_callback(pose_msg):
     global goal_pid_x
     global goal_pid_y
+    global ghost_goal
     goal_pid_x =  float(pose_msg.pose.position.x)
     goal_pid_y = float( pose_msg.pose.position.y )
+    ghost_goal = float( pose_msg.pose.orientation.z)
   
 
 
@@ -190,6 +196,13 @@ if __name__ == '__main__':
         safe = not abort
         moving = fred_moving(current_speed)
         stoped = not moving
+
+       
+        ghost_goal_flag = bool(ghost_goal)
+       
+
+        # print(ghost_goal_flag)
+        # print(goal_pid_x,goal_pid_y,ghost_goal)
         mission_completed = mission_completed_dict['value']
         
         reached_goal_flag = reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y)
@@ -274,7 +287,12 @@ if __name__ == '__main__':
 
         mission_completed = False
         pub_goal_reached.publish(reached_goal_flag)
-        pub_fita_led.publish(state)
+
+        #if ghost goal dont publish any color 
+        if(ghost_goal_flag and auto_mode and safe):
+            pub_fita_led.publish(400)
+        else:
+            pub_fita_led.publish(state)
        
             
 
