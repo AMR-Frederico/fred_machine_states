@@ -38,7 +38,7 @@ emergency = False
 
 mission_completed_flag = False
 
-DIST_TOLERANCE = 0.35 #[m]
+DIST_TOLERANCE = 0.5 #[m]
 SPEED_TOLERANCE = 0.05 #[m/s]
 IN_GOAL_TIME = 0 #[s]
 IN_GOAL_MAX_TIME = 10 #[s]
@@ -221,20 +221,25 @@ if __name__ == '__main__':
         
         if( manual_mode or control_desconected):
             state = Fred_state.IDLE
+            print('idle')
 
         if(auto_mode and control_conected):
 
             if(goal_pid_x == None and stoped): #se ele não tem comando e não esta se movendo 
                 state = Fred_state.WAITING
+                print('waiting')
 
             if(goal_pid_x != None): #tem comando 
                 state = Fred_state.WITH_GOAL
+                print('with goal')
 
                 if(moving and not reached_goal_flag): # se esta se movendo e ainda não chegou no objetivo
                     state = Fred_state.MOVING_TO_GOAL
+                    print('moving to goal')
 
                 if(reached_goal_flag ): #chegou no objetivo e não esta se movendo 
                     state = Fred_state.AT_GOAL
+                    print('at goal')
 
                 if(mission_completed): #completou todos os objetivos 
                     state = Fred_state.MISSION_COMPLETED
@@ -243,6 +248,7 @@ if __name__ == '__main__':
             #         state = Fred_state.STOPING
         if(abort):
             state = Fred_state.EMERGENCY_BREAK
+            print('emergency break')
                     
 
         last_goal_pid_x = goal_pid_x 
@@ -252,7 +258,6 @@ if __name__ == '__main__':
         if(state == Fred_state.AT_GOAL):
            goal_pid_x = None
            pub_turn_on_pid.publish(False)
-
         
         if(state == Fred_state.WITH_GOAL):
             pub_turn_on_pid.publish(True)
