@@ -38,14 +38,9 @@ emergency = False
 
 mission_completed_flag = False
 
-DIST_TOLERANCE = 0.5 #[m]
 SPEED_TOLERANCE = 0.05 #[m/s]
-IN_GOAL_TIME = 0 #[s]
-IN_GOAL_MAX_TIME = 10 #[s]
 
 cmd_vel_msg = Twist()
-
-# real_goal = 12.4
 
 class Fred_state(IntEnum):
             
@@ -59,50 +54,11 @@ class Fred_state(IntEnum):
     
 
 
+def goal_reached_callback( data):
+     global reached_goal_flag
+     reached_goal_flag = data.data
 
-
-def reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y):
-    global reached_goal_flag 
-    global reached_goal_time
-    global last_in_goal
-    # print(f"{goal_pid_x}  {goal_pid_y}")
-
-    if(goal_pid_x == None and  goal_pid_y == None):
-        return False
-    if(goal_pid_x == None):
-        goal_pid_x = 0
-    if(goal_pid_y == None):
-        goal_pid_y = 0
-    current_time = time()
-    distance_to_target_x = goal_pid_x - current_position_x
-    distance_to_target_y = goal_pid_y - current_position_y
-    # print(distance_to_target_x)
-
-    # se a distancia pro objetivo for menor que o objetivo -> esta no objetivo
-    in_goal_x = abs(distance_to_target_x) < DIST_TOLERANCE
-    in_goal_y = abs(distance_to_target_y) < DIST_TOLERANCE
     
-    in_goal = in_goal_x and in_goal_y
-
-    # se tiver no objetivo e a flag for falsa -> primeira vez no objetivo guarda o tempo
-    #rising edge
-    if(in_goal > last_in_goal):
-        reached_goal_time = current_time
-        
-    
-    # se nao estiver no objetivo garante q a flag esteja falsa, tbm vale caso ele saia do objetivo
-    if(not in_goal):
-        reached_goal_time = current_time
-
-    #calcula o tempo que ele ficou no objetivo 
-    in_target_time = current_time - reached_goal_time
-   
-    last_in_goal = in_goal
-    # se ele ficou no objetivo pelo tempo necessario retorna verdadeiro
-
-    # print(f"current_position:{current_position}|goal_pid:{goal_pid}|  reached tgt:{in_target_time > IN_GOAL_MAX_TIME} |in_goal:{in_goal}| reached_goal_flag:{reached_goal_flag}|reached_goal_time:{reached_goal_time}|in_target_time:{in_target_time}")
-    return in_target_time > IN_GOAL_TIME #and in_target_time < IN_GOAL_MAX_TIME
-        
 
 def fred_moving(current_speed):
     return abs(current_speed) > SPEED_TOLERANCE
@@ -181,8 +137,7 @@ if __name__ == '__main__':
 
     #PUBS    
    
-   # pub_auto_mode = rospy.Publisher('/machine_state/control_mode/auto', Bool, queue_size=1)
-    pub_goal_reached = rospy.Publisher("goal_manager/goal/reached",Bool, queue_size = 1)
+
     pub_cmd_vel = rospy.Publisher("cmd_vel",Twist,queue_size = 10)
 
     while not rospy.is_shutdown():
@@ -205,13 +160,13 @@ if __name__ == '__main__':
         # print(goal_pid_x,goal_pid_y,ghost_goal)
         mission_completed = mission_completed_dict['value']
         
-        reached_goal_flag = reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y)
+        # reached_goal_flag = reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y)
 
         rospy.Subscriber("/odom", Odometry, odom_callback)
         # rospy.Subscriber("/control/position/x", Float64, position_callback)
         # rospy.Subscriber("/control/position/setup/goal", Pose2D, position_callback)
         rospy.Subscriber("/goal_manager/goal/current", PoseStamped, position_callback)
-
+        rospy.Subscriber("/goal_manager/goal/reached", Bool,goal_reached_callback) 
 
         pub_fita_led = rospy.Publisher("/cmd/led_strip/color",Float32,queue_size = 5)
         pub_turn_on_pid = rospy.Publisher("/control/on",Bool, queue_size = 1)
@@ -221,25 +176,25 @@ if __name__ == '__main__':
         
         if( manual_mode or control_desconected):
             state = Fred_state.IDLE
-            print('idle')
+            # print('idle')
 
         if(auto_mode and control_conected):
 
             if(goal_pid_x == None and stoped): #se ele não tem comando e não esta se movendo 
                 state = Fred_state.WAITING
-                print('waiting')
+                # print('waiting')
 
             if(goal_pid_x != None): #tem comando 
                 state = Fred_state.WITH_GOAL
-                print('with goal')
+                # print('with goal')
 
                 if(moving and not reached_goal_flag): # se esta se movendo e ainda não chegou no objetivo
                     state = Fred_state.MOVING_TO_GOAL
-                    print('moving to goal')
+                    # print('moving to goal')
 
                 if(reached_goal_flag ): #chegou no objetivo e não esta se movendo 
                     state = Fred_state.AT_GOAL
-                    print('at goal')
+                    # print('at goal')
 
                 if(mission_completed): #completou todos os objetivos 
                     state = Fred_state.MISSION_COMPLETED
@@ -248,7 +203,7 @@ if __name__ == '__main__':
             #         state = Fred_state.STOPING
         if(abort):
             state = Fred_state.EMERGENCY_BREAK
-            print('emergency break')
+            # print('emergency break')
                     
 
         last_goal_pid_x = goal_pid_x 
@@ -291,12 +246,13 @@ if __name__ == '__main__':
             
 
         mission_completed = False
-        pub_goal_reached.publish(reached_goal_flag)
+        
 
         #if ghost goal dont publish any color 
         if(ghost_goal_flag and auto_mode and safe):
             pub_fita_led.publish(400)
         else:
+            
             pub_fita_led.publish(state)
        
             
