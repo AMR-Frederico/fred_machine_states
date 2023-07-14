@@ -42,6 +42,8 @@ SPEED_TOLERANCE = 0.05 #[m/s]
 
 cmd_vel_msg = Twist()
 
+state_msg = Int16()
+
 class Fred_state(IntEnum):
             
     IDLE = 0#white 
@@ -103,7 +105,7 @@ def msg_callback(value, dict):
 
 if __name__ == '__main__':
     rospy.init_node('machine_state_node')
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(50)
 
     state = Fred_state.IDLE
     last_switch_mode = False
@@ -140,6 +142,15 @@ if __name__ == '__main__':
 
     pub_cmd_vel = rospy.Publisher("cmd_vel",Twist,queue_size = 10)
 
+    rospy.Subscriber("/goal_manager/goal/current", PoseStamped, position_callback)
+    rospy.Subscriber("/goal_manager/goal/spline/reached", Bool,goal_reached_callback) 
+
+    pub_main_machine_state = rospy.Publisher("/machine_state/main",Int16,queue_size = 5)
+
+    # pub_fita_led = rospy.Publisher("/cmd/led_strip/color",Float32,queue_size = 5)
+    pub_turn_on_pid = rospy.Publisher("/control/on",Bool, queue_size = 1)
+    rospy.Subscriber("/odom", Odometry, odom_callback)
+
     while not rospy.is_shutdown():
         # INPUTS 
 
@@ -162,14 +173,8 @@ if __name__ == '__main__':
         
         # reached_goal_flag = reached_goal(current_position_x, current_position_y,goal_pid_x,goal_pid_y)
 
-        rospy.Subscriber("/odom", Odometry, odom_callback)
         # rospy.Subscriber("/control/position/x", Float64, position_callback)
         # rospy.Subscriber("/control/position/setup/goal", Pose2D, position_callback)
-        rospy.Subscriber("/goal_manager/goal/current", PoseStamped, position_callback)
-        rospy.Subscriber("/goal_manager/goal/reached", Bool,goal_reached_callback) 
-
-        pub_fita_led = rospy.Publisher("/cmd/led_strip/color",Float32,queue_size = 5)
-        pub_turn_on_pid = rospy.Publisher("/control/on",Bool, queue_size = 1)
         
        
         # print(f"state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| current pos: {current_position}| goal pid : {goal_pid}|reached_goal_flag {reached_goal_flag }|moving {moving}  ")
@@ -209,6 +214,9 @@ if __name__ == '__main__':
         last_goal_pid_x = goal_pid_x 
         last_goal_pid_y = goal_pid_y  
 
+        state_msg.data = state
+        print(state)
+        pub_main_machine_state.publish(state_msg)
         #-------------------------------act on state 
         if(state == Fred_state.AT_GOAL):
            goal_pid_x = None
@@ -249,14 +257,13 @@ if __name__ == '__main__':
         
 
         #if ghost goal dont publish any color 
-        if(ghost_goal_flag and auto_mode and safe):
-            pub_fita_led.publish(400)
-        else:
+        # if(ghost_goal_flag and auto_mode and safe):
+        #     # pub_fita_led.publish(400)
+        # else:
             
-            pub_fita_led.publish(state)
+            # pub_fita_led.publish(state)
        
             
-
 
         rate.sleep()
 
