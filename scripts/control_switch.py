@@ -47,7 +47,7 @@ def msg_callback(value, dict):
 
 if __name__ == '__main__':
     rospy.init_node('control_mode_node')
-    rate = rospy.Rate(200)
+    rate = rospy.Rate(50)
     last_switch_mode = False
     #declare subs   
 
