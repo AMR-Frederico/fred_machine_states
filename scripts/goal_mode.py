@@ -136,7 +136,7 @@ if __name__ == '__main__':
         mission_completed = mission_completed_dict['value']
         
         
-         rospy.loginfo(f"MAIN MACHINE STATES:  state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| current pos: {current_position}| goal pid : {goal_pid}|reached_goal_flag {reached_goal_flag }|moving {moving}  ")
+        rospy.loginfo(f"MAIN MACHINE STATES:  state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| abort : {abort}|reached_goal_flag {reached_goal_flag } ")
         
         if( manual_mode and safe):
             state = Fred_state.MANUAL
@@ -159,7 +159,7 @@ if __name__ == '__main__':
         last_goal_pid_y = goal_pid_y  
 
         state_msg.data = state
-        # print(state)
+        rospy.loginfo(f"MACHINE STATES: {state}")
         pub_main_machine_state.publish(state_msg)
         #-------------------------------act on state 
    
@@ -175,7 +175,7 @@ if __name__ == '__main__':
             pub_turn_on_pid.publish(False)
             cmd_vel_msg.linear.x = 0
             cmd_vel_msg.angular.z = 0
-            pub_cmd_vel.publish(cmd_vel_msg)
+            # pub_cmd_vel.publish(cmd_vel_msg)
            
 
 
@@ -183,7 +183,7 @@ if __name__ == '__main__':
             pub_turn_on_pid.publish(False)
             cmd_vel_msg.linear.x = 0
             cmd_vel_msg.angular.z = 0
-            pub_cmd_vel.publish(cmd_vel_msg)
+            # pub_cmd_vel.publish(cmd_vel_msg)
             
 
       
