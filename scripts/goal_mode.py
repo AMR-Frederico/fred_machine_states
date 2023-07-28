@@ -159,7 +159,7 @@ if __name__ == '__main__':
         last_goal_pid_y = goal_pid_y  
 
         state_msg.data = state
-        rospy.loginfo(f"MACHINE STATES: {state}")
+        # rospy.loginfo(f"MACHINE STATES: {state}")
         pub_main_machine_state.publish(state_msg)
         #-------------------------------act on state 
    
