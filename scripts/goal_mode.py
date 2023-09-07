@@ -136,7 +136,7 @@ if __name__ == '__main__':
         mission_completed = mission_completed_dict['value']
         
         
-        rospy.loginfo(f"MAIN MACHINE STATES:  state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| abort : {abort}|reached_goal_flag {reached_goal_flag } ")
+        # rospy.loginfo(f"MAIN MACHINE STATES:  state: {state}| auto_mode: {auto_mode}| control_conection: {control_conected}| abort : {abort}|reached_goal_flag {reached_goal_flag } ")
         
         if( manual_mode and safe):
             state = Fred_state.MANUAL
