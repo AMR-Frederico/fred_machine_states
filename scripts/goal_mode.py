@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     rospy.Subscriber("/goal_manager/goal/mission_completed", Bool, lambda msg: msg_callback(msg.data, mission_completed_dict))
 
-    rospy.Subscriber("/goal_manager/goal/spline/reached", Bool,goal_reached_callback) 
+    rospy.Subscriber("/goal_manager/goal/reached", Bool,goal_reached_callback) 
 
 
     #PUBS    
